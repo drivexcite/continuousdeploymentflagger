@@ -1,0 +1,16 @@
+apiVersion: aadpodidentity.k8s.io/v1
+kind: AzureIdentity
+metadata:
+    name: ${identityName}
+spec:
+    type: 0
+    resourceID: /subscriptions/${mainSubscription}/resourcegroups/${resourceGroup}/providers/Microsoft.ManagedIdentity/userAssignedIdentities/${identityName}
+    clientID: ${managedIdentityClientId}
+---
+apiVersion: aadpodidentity.k8s.io/v1
+kind: AzureIdentityBinding
+metadata:
+    name: azure-pod-identity-binding
+spec:
+    azureIdentity: ${identityName}
+    selector: azure-pod-identity-binding-selector
