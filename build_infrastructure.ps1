@@ -33,10 +33,6 @@ helm repo add csi-secrets-store-provider-azure https://raw.githubusercontent.com
 kubectl create ns csi-driver
 helm install csi-azure csi-secrets-store-provider-azure/csi-secrets-store-provider-azure --namespace csi-driver
 
-# Expand and Apply the Secret Provider Class to the cluster
-Get-Content .\SecretProviderClass.yaml.template | foreach { $ExecutionContext.InvokeCommand.ExpandString($_) } | Set-Content .\SecretProviderClass.yaml
-kubectl apply -f .\SecretProviderClass.yaml
-
 # Collect principals and resource group for Managed Identity Role Assignments
 $aks = az aks show --resource-group $resourceGroup --name $clusterName | ConvertFrom-Json
 
@@ -49,7 +45,7 @@ az role assignment create --role "Managed Identity Operator" --assignee $aks.ide
 helm repo add aad-pod-identity https://raw.githubusercontent.com/Azure/aad-pod-identity/master/charts
 
 kubectl create ns ad-identity
-helm install aad-pod-identity aad-pod-identity/aad-pod-identity --namesp ace ad-identity --set nmi.allowNetworkPluginKubenet=true
+helm install aad-pod-identity aad-pod-identity/aad-pod-identity --namespace ad-identity --set nmi.allowNetworkPluginKubenet=true
 
 # Retrieve Cluster's Managed Identity
 $userAssignedIdentity = az resource list -g $aks.nodeResourceGroup --query "[?contains(type, 'Microsoft.ManagedIdentity/userAssignedIdentities')]"  | ConvertFrom-Json
@@ -58,6 +54,14 @@ $identity = az identity show -n $userAssignedIdentity.name -g $userAssignedIdent
 $identityName = $identity.name.ToLower()
 $identityId = $identity.id
 $identityClientId = $identity.clientId
+
+az role assignment create --role "Managed Identity Operator" --assignee $identity.clientId --scope /subscriptions/$mainSubscription/resourcegroups/$($aks.nodeResourceGroup)
+az role assignment create --role "Virtual Machine Contributor" --assignee $identity.clientId --scope /subscriptions/$mainSubscription/resourcegroups/$($aks.nodeResourceGroup)
+az role assignment create --role "Managed Identity Operator" --assignee $identity.clientId --scope /subscriptions/$mainSubscription/resourcegroups/$resourceGroup
+
+# These two will fail (may not be necessary)
+# az role assignment create --role "Virtual Machine Contributor" --assignee $identity.clientId --scope /subscriptions/$acrSubscription/resourcegroups/acrResourceGroup
+# az role assignment create --role "Managed Identity Operator" --assignee $identity.clientId --scope /subscriptions/$acrSubscription/resourcegroups/$acrResourceGroup
 
 # Retrieve KeyVault info
 $keyVault = az keyvault show -n $keyVaultName  -g $acrResourceGroup --subscription $acrSubscription | ConvertFrom-Json
@@ -68,6 +72,10 @@ az role assignment create --role "Reader" --assignee $identity.principalId --sco
 # Set Secret Policys for Identity
 az keyvault set-policy -n $keyVaultName -g $acrResourceGroup --subscription $acrSubscription --secret-permissions get --spn $identity.clientId
 
+# Expand and Apply the Secret Provider Class to the cluster
+Get-Content .\SecretProviderClass.yaml.template | foreach { $ExecutionContext.InvokeCommand.ExpandString($_) } | Set-Content .\SecretProviderClass.yaml
+kubectl apply -f .\SecretProviderClass.yaml
+
 # Expand and Apply the Identity and Binding
 Get-Content .\PodIdentityAndBinding.yaml.template | foreach { $ExecutionContext.InvokeCommand.ExpandString($_) } | Set-Content .\PodIdentityAndBinding.yaml
 kubectl apply -f .\PodIdentityAndBinding.yaml
@@ -76,8 +84,6 @@ kubectl apply -f .\PodIdentityAndBinding.yaml
 kubectl apply -f .\pod.yaml
 kubectl describe pod/nginx-secrets-store-inline
 
-# Retrieve the managed Node Pool VMSS
-$aksNodePoolName = az vmss list -g $aksClusterInfo.nodeResourceGroup --query [0].name -o tsv
-
-# Verify the identities are listed there
-az vmss identity show -g $aksClusterInfo.nodeResourceGroup --name $aksNodePoolName
+# Check the pod to see if it started and if the secrets are mounted
+kubectl describe pod/nginx-secrets-store
+kubectl exec -it nginx-secrets-store ls /mnt/secrets-store/
