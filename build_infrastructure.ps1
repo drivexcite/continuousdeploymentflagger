@@ -1,3 +1,5 @@
+
+# Location of the ACR and AKV is for this example in a separate subscription
 $mainSubscription = '45d3970c-1cf3-47f8-86fa-ae717be4baa9'
 $resourceGroup = 'MyDeploymentGroup'
 $clusterName = 'MyContiniousCluster'
