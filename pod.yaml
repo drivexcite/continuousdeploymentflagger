@@ -12,6 +12,102 @@ spec:
       - name: secrets-store-inline
         mountPath: "/mnt/secrets-store"
         readOnly: true    
+      env:
+      - name: BLOB_STORAGE_CONNECTION_STRING
+        valueFrom:
+          secretKeyRef:
+            name: appsettings
+            key: BLOB_STORAGE_CONNECTION_STRING
+      - name: OktaApiToken
+        valueFrom:
+          secretKeyRef:
+            name: appsettings
+            key: OktaApiToken
+      - name: OktaDomain
+        valueFrom:
+          secretKeyRef:
+            name: appsettings
+            key: OktaDomain
+      - name: OktaServerId
+        valueFrom:
+          secretKeyRef:
+            name: appsettings
+            key: OktaServerId
+      - name: OktaTokenProviderIssuer
+        valueFrom:
+          secretKeyRef:
+            name: appsettings
+            key: OktaTokenProviderIssuer
+      - name: SalesforceClientId
+        valueFrom:
+          secretKeyRef:
+            name: appsettings
+            key: SalesforceClientId
+      - name: SalesforceClientSecret
+        valueFrom:
+          secretKeyRef:
+            name: appsettings
+            key: SalesforceClientSecret
+      - name: SalesforcePassword
+        valueFrom:
+          secretKeyRef:
+            name: appsettings
+            key: SalesforcePassword
+      - name: SalesforceTokenEndpoint
+        valueFrom:
+          secretKeyRef:
+            name: appsettings
+            key: SalesforceTokenEndpoint
+      - name: SalesforceUsername
+        valueFrom:
+          secretKeyRef:
+            name: appsettings
+            key: SalesforceUsername
+      - name: SalesforceUserSecurityToken
+        valueFrom:
+          secretKeyRef:
+            name: appsettings
+            key: SalesforceUserSecurityToken
+      - name: SalesforceVersion
+        valueFrom:
+          secretKeyRef:
+            name: appsettings
+            key: SalesforceVersion
+      - name: SERVICE_BUS_CONNECTION_STRING
+        valueFrom:
+          secretKeyRef:
+            name: appsettings
+            key: SERVICE_BUS_CONNECTION_STRING
+      - name: SqlServer
+        valueFrom:
+          secretKeyRef:
+            name: appsettings
+            key: SqlServer
+      - name: SqlServerAdminstratorPassword
+        valueFrom:
+          secretKeyRef:
+            name: appsettings
+            key: SqlServerAdminstratorPassword
+      - name: SqlServerPassword
+        valueFrom:
+          secretKeyRef:
+            name: appsettings
+            key: SqlServerPassword
+      - name: SqlServerUsername
+        valueFrom:
+          secretKeyRef:
+            name: appsettings
+            key: SqlServerUsername
+      - name: telemetryStorageConnectionString
+        valueFrom:
+          secretKeyRef:
+            name: appsettings
+            key: telemetryStorageConnectionString
+      - name: DatabaseName
+        value: ClientsDB-STAGE
+      - name: ConnectionStrings__ClientsDbConnectionString
+        value: Server=tcp:$(SqlServer),1433;Initial Catalog=$(DatabaseName);Persist Security Info=False;User ID=$(SqlServerUsername);Password=$(SqlServerPassword);MultipleActiveResultSets=False;Encrypt=True;TrustServerCertificate=False;Connection Timeout=30;
+
   volumes:
     - name: secrets-store-inline
       csi:
