@@ -74,13 +74,17 @@ kubectl apply -f .\SecretProviderClass.yaml
 Get-Content .\PodIdentityAndBinding.yaml.template | foreach { $ExecutionContext.InvokeCommand.ExpandString($_) } | Set-Content .\PodIdentityAndBinding.yaml
 kubectl apply -f .\PodIdentityAndBinding.yaml
 
-# Install any pod with secrets mounted
-kubectl apply -f .\pod.yaml
-kubectl describe pod/nginx-secrets-store
+# Install the User Management Service with Secrets
+kubectl apply -f .\UserManagementServiceDeployment.yaml
 
-# Check the pod to see if it started and if the secrets are mounted
-kubectl describe pod/nginx-secrets-store
-kubectl exec -it nginx-secrets-store ls /mnt/secrets-store/
+# Get the information about one of the pods
+$pods = kubectl get pods -o json | ConvertFrom-Json
+$firstUmsPod = $pods.items.metadata[0].name
+
+# Verify the secrets are injected as environment variables.
+kubectl describe pod/$firstUmsPod
+kubectl exec -it $firstUmsPod printenv
+kubectl exec -i -t $firstUmsPod -- /bin/bash
 
 # Install Istio
 # choco install istioctl

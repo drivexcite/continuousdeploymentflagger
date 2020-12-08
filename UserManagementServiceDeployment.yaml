@@ -118,11 +118,11 @@ spec:
           - name: BLOB_STORAGE_CONTAINER
             value: hwp-sc-westus-eps
           - name: Messaging__Disabled
-            value: false
+            value: "false"
           - name: Messaging__0__Topics__Name
             value: provisioning
           - name: Messaging__0__Topics__MaxSizeInMegabytes
-            value: 4096
+            value: "4096"
           - name: Messaging__0__Topics__DefaultMessageTtl
             value: "24:00:00"
           - name: Messaging__0__Topics__DuplicateDetectionHistoryDuration
@@ -130,7 +130,7 @@ spec:
           - name: Messaging__1__Topics__Name
             value: provisioningResponses
           - name: Messaging__1__Topics__MaxSizeInMegabytes
-            value: 4096
+            value: "4096"
           - name: Messaging__1__Topics__DefaultMessageTtl
             value: "24:00:00"
           - name: Messaging__1__Topics__DuplicateDetectionHistoryDuration
