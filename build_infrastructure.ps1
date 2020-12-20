@@ -24,7 +24,7 @@ $globalTenantId = az account show --query "tenantId"
 az group create --name $resourceGroup --location westus
 
 # Create cluster
-az aks create --resource-group $resourceGroup --name $clusterName --node-vm-size Standard_B2s --generate-ssh-keys --node-count 3 --enable-managed-identity --attach-acr $acrResourceId
+az aks create --resource-group $resourceGroup --name $clusterName --node-vm-size Standard_B2ms --generate-ssh-keys --node-count 2 --enable-managed-identity --attach-acr $acrResourceId --enable-cluster-autoscaler --min-count 1 --max-count 5
 
 # Create local configuration file to talk to the AKS Cluster
 az aks get-credentials --resource-group $resourceGroup --name $clusterName
@@ -75,17 +75,58 @@ Get-Content .\PodIdentityAndBinding.yaml.template | foreach { $ExecutionContext.
 kubectl apply -f .\PodIdentityAndBinding.yaml
 
 # Install the User Management Service with Secrets
-kubectl apply -f .\UserManagementServiceDeployment.yaml
+kubectl apply -f .ums\0.0.UserManagementServiceSvc.yaml
+kubectl apply -f .ums\0.1.ServiceAccount.yaml
+kubectl apply -f .ums\0.2.UserManagementServiceDeployment.yaml
+kubectl rollout status deployment/ums
 
 # Get the information about one of the pods
-$pods = kubectl get pods -o json | ConvertFrom-Json
-$firstUmsPod = $pods.items.metadata[0].name
+$umsPod = kubectl get pod -l app=ums -o jsonpath='{.items[0].metadata.name}'
 
 # Verify the secrets are injected as environment variables.
-kubectl describe pod/$firstUmsPod
-kubectl exec -it $firstUmsPod printenv
-kubectl exec -i -t $firstUmsPod -- /bin/bash
+kubectl describe pod/$umsPod
+kubectl exec -it $umsPod printenv
+kubectl exec -i -t $umsPod -- /bin/bash
+
+# Check the Cluster from the Outside
+#$clusterAddress = kubectl config view -o jsonpath="{'Cluster name\tServer\n'}{range .clusters[*]}{.name}{'__'}{.cluster.server}{'\n'}{end}" | Select-String -Pattern $clusterName -CaseSensitive | Select-Object -first 1 | Foreach-Object { $_.Line.Split('__')[2] }
+$clusterAddress = kubectl config view -o jsonpath="{.clusters[?(@.name=='$clusterName')].cluster.server}"
+$clusterToken = kubectl get secrets -o jsonpath="{.items[?(@.metadata.annotations['kubernetes\.io/service-account\.name']=='default')].data.token}" | % { [System.Text.Encoding]::UTF8.GetString([System.Convert]::FromBase64String($_)) }
+$clusterResponse = Invoke-WebRequest -Method "GET" -Uri $clusterAddress/api -Headers @{ "Authorization" = "Bearer $clusterToken" } -SkipCertificateCheck
 
 # Install Istio
 # choco install istioctl
-istioctl install --set profile=demo -y
+istioctl install
+
+# Install Prometheus
+kubectl apply -f https://raw.githubusercontent.com/istio/istio/release-1.8/samples/addons/prometheus.yaml
+
+# Configure Istio sidecar injector
+kubectl label namespace default istio-injection=enabled
+
+# At this point, the deployment has to be redeployed to let the sidecar injector setup the Envoy proxy
+kubectl scale deployment.v1.apps/ums --replicas=0
+kubectl scale deployment.v1.apps/ums --replicas=3
+
+# Install the Istio Gateway
+kubectl apply -f .\ums\0.3.IstioGateway.yaml
+
+# Get the External IP of the Istio Gateway:
+$ingressHost = kubectl get svc istio-ingressgateway -n istio-system -o jsonpath="{.status.loadBalancer.ingress[0].ip}"
+$ingressPort = kubectl -n istio-system get service istio-ingressgateway -o jsonpath="{.spec.ports[?(@.name=='http2')].port}"
+$secureIngressPort = kubectl -n istio-system get service istio-ingressgateway -o jsonpath="{.spec.ports[?(@.name=='https')].port}"
+$tcpIngressPort = kubectl -n istio-system get service istio-ingressgateway -o jsonpath="{.spec.ports[?(@.name=='tcp')].port}"
+$umsGatewayUrl = "${ingressHost}:${ingressPort}"
+
+# Check the status of the proxys
+istioctl proxy-status
+
+# Enable traffic to the UMS
+kubectl apply -f .\ums\0.4.UserManagementVirtualService.yaml
+
+# Get the istio ingress pod
+$ingressPod = kubectl get pod -l app=istio-ingressgateway -n istio-system -o jsonpath='{.items[0].metadata.name}'
+istioctl proxy-config listener $ingressPod  -n istio-system
+
+# Check the traffic routing in the Proxy
+istioctl proxy-config route $ingressPod  -n istio-system --name http.80 -o json

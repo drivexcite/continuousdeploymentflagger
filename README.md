@@ -1,4 +1,10 @@
-# continuousdeploymentflagger
+# Continuous Deployment with Flagger
+This repository contains the setup necessary to create a continuous deployment pipeline of a backend service application written in .NET and deployed to a Kubernetes cluster, leveraging services like Azure Key Vault, Azure Container Registry, Azure Service Bus and Azure SQL Database.
+
+The application 
+
+## Secret Management
+
 
 # Relevant Links (Errors found during configuration of the AD Pod Identity Provider)
 [Secure secrets with Key Vault](https://github.com/HoussemDellai/aks-keyvault)

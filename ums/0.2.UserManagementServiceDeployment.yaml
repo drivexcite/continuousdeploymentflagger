@@ -3,21 +3,27 @@ kind: Deployment
 metadata:
   name: ums
   labels:
-    app: ums    
+    app: ums   
+    version: v1 
 spec:
   replicas: 3
   selector:
     matchLabels:
       app: ums
+      version: v1
   template:
     metadata:
       labels:
         app: ums
+        version: v1
         aadpodidbinding: azure-kv
     spec:
+      serviceAccountName: ums-account
       containers:
         - name: ums
-          image: hwpacrwestus.azurecr.io/staging/user.management:latest          
+          image: hwpacrwestus.azurecr.io/staging/user.management:ab828041eaa76ebffad86a4cb5ea91e2f33eaf21
+          ports:
+          - containerPort: 80
           volumeMounts:
           - name: appsettings
             mountPath: "/mnt/appsettings"
