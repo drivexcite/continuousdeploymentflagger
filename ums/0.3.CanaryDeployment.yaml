@@ -1,0 +1,63 @@
+apiVersion: flagger.app/v1beta1
+kind: Canary
+metadata:
+  name: ums
+  namespace: default
+spec:
+  targetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: ums
+  # the maximum time in seconds for the canary deployment to make progress before it is rollback (default 600s)
+  progressDeadlineSeconds: 60
+  # # HPA reference (optional)
+  # autoscalerRef:
+  #   apiVersion: autoscaling/v2beta2
+  #   kind: HorizontalPodAutoscaler
+  #   name: podinfo
+  service:
+    port: 8080
+    targetPort: 80
+    # Istio gateways (optional)
+    gateways:
+    - public-gateway-gateway.istio-system.svc.cluster.local
+    # Istio virtual service host names (optional)
+    hosts:
+    - app.example.com
+    trafficPolicy:
+      tls:
+        mode: DISABLE
+    retries:
+      attempts: 3
+      perTryTimeout: 1s
+      retryOn: "gateway-error,connect-failure,refused-stream"
+  analysis:    
+    interval: 20s
+    # max number of failed metric checks before rollback
+    threshold: 5
+    # max traffic percentage routed to canary
+    maxWeight: 60
+    # canary increment step %
+    stepWeight: 15    
+    # metrics:
+    # - name: request-success-rate
+    #   # minimum req success rate % (non 5xx responses)
+    #   thresholdRange:
+    #     min: 99
+    #   interval: 30s
+    # - name: request-duration
+    #   thresholdRange:
+    #     max: 500
+    #   interval: 30s
+    # Instead: https://github.com/fluxcd/flagger/issues/191
+    metrics:
+    - name: istio_requests_total
+      # minimum req success rate (non 5xx responses)
+      thresholdRange:
+        min: 99
+      interval: 20s
+    - name: istio_request_duration_seconds_bucket
+      # maximum req duration P99
+      thresholdRange:
+        max: 500
+      interval: 20s

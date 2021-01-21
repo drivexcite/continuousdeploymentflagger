@@ -1,27 +1,31 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
+  namespace: default
   name: ums
   labels:
     app: ums   
-    version: v1 
 spec:
-  replicas: 3
+  replicas: 2
   selector:
     matchLabels:
       app: ums
-      version: v1
   template:
     metadata:
       labels:
         app: ums
-        version: v1
-        aadpodidbinding: azure-kv
-    spec:
-      serviceAccountName: ums-account
+        aadpodidbinding: azure-kv    
+    spec:      
       containers:
-        - name: ums
-          image: hwpacrwestus.azurecr.io/staging/user.management:ab828041eaa76ebffad86a4cb5ea91e2f33eaf21
+        - name: ums          
+          image: hwpacrwestus.azurecr.io/staging/user.management:9fd3c3b8ea51b5f1d0bc8a368259f32c884b013d
+          resources:
+            limits:
+              cpu: "2"
+              memory: 1024Mi
+            requests:
+              cpu: 200m
+              memory: 128Mi
           ports:
           - containerPort: 80
           volumeMounts:
@@ -154,7 +158,7 @@ spec:
           - name: ApplicationName
             value: UserManagementService
           - name: CloudRole
-            value: TonaUMSOnAks
+            value: TonaUMSOnAks        
 
       volumes:
         - name: appsettings

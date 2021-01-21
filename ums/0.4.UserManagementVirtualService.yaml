@@ -13,6 +13,6 @@ spec:
         prefix: /    
     route:
     - destination:
-        host: ums-service.default.svc.cluster.local
+        host: ums.default.svc.cluster.local
         port:
           number: 8080

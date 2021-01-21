@@ -1,7 +1,7 @@
 apiVersion: networking.istio.io/v1alpha3
 kind: Gateway
 metadata:
-  name: ums-gateway
+  name: public-gateway
 spec:
   selector:
     istio: ingressgateway
